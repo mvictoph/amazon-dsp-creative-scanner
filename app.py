@@ -8,16 +8,16 @@ import numpy as np
 # Définition des specs Amazon DSP
 AMAZON_DSP_SPECS = {
     # Desktop
-    "Desktop Leaderboard": (728, 90, 40),  # (width, height, max_size_kb)
-    "Desktop Billboard": (970, 250, 40),
-    "Desktop Medium Rectangle": (300, 250, 40),
+    "Desktop Medium Rectangle": (300, 250, 40),  # (width, height, max_size_kb)
+    "Desktop Leaderboard": (728, 90, 40),
     "Desktop Wide Skyscraper": (160, 600, 40),
-    "Desktop Large Rectangle": (300, 600, 40),
+    "Desktop Large Rectangle": (300, 600, 50),
+    "Desktop Billboard": (1940, 500, 200),
     # Mobile
-    "Mobile Leaderboard": (320, 50, 40),
-    "Mobile Banner": (320, 480, 40),
-    "Mobile Medium Rectangle": (300, 250, 40),
-    "Mobile Interstitial": (1940, 500, 40)
+    "Mobile Leaderboard": (640, 100, 50),
+    "Mobile Detail Banner": (828, 250, 100),  # Detail and Search Results page
+    "Mobile Medium Rectangle": (600, 500, 40),
+    "Mobile Leaderboard Tablet": (1456, 180, 200)
 }
 
 def check_image_specs(image, desired_format):
