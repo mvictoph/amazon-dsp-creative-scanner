@@ -24,19 +24,10 @@ def check_image_specs(image, desired_format):
     """Vérifie les specs d'une image"""
     width, height = image.size
     
-    # Vérification du poids avec le format désiré
-    img_byte_arr = io.BytesIO()
-    
-    # Conserver le mode original de l'image
-    if image.mode != 'RGB':
-        image = image.convert('RGB')
-        
-    if desired_format == 'JPEG':
-        image.save(img_byte_arr, format='JPEG', quality=100, optimize=True)
-    else:
-        image.save(img_byte_arr, format='PNG', optimize=True)
-    
-    size_kb = len(img_byte_arr.getvalue()) / 1024
+    # Obtenir la taille du fichier original
+    original_buffer = io.BytesIO()
+    image.save(original_buffer, format=image.format if image.format else 'JPEG')
+    size_kb = len(original_buffer.getvalue()) / 1024
     
     for format_name, (req_width, req_height, max_size) in AMAZON_DSP_SPECS.items():
         if (width == req_width and height == req_height):
