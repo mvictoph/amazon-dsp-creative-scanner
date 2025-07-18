@@ -156,25 +156,33 @@ def main():
                 
                 if closest_match:
                     st.write(f"Closest format: {closest_match[0]} ({closest_match[1]}x{closest_match[2]}) - Max size: {closest_match[3]}KB")
-                    if st.button(f"Resize and compress {original_name}"):
+                    
+                    # Vérifier d'abord la taille actuelle de l'image
+                    img_byte_arr = io.BytesIO()
+                    image.save(img_byte_arr, format=image.format)
+                    current_size = len(img_byte_arr.getvalue()) / 1024
+                    
+                    # Déterminer si seul le redimensionnement est nécessaire
+                    needs_compression = current_size > closest_match[3]
+                    
+                    button_text = f"Resize and compress {original_name}" if needs_compression else f"Resize {original_name}"
+                    
+                    if st.button(button_text):
                         # Redimensionnement
                         resized_image = image.resize((closest_match[1], closest_match[2]), Image.LANCZOS)
                         
-                        # Compression si nécessaire
-                        img_byte_arr = io.BytesIO()
-                        resized_image.save(img_byte_arr, format=image.format, quality=95, optimize=True)
-                        current_size = len(img_byte_arr.getvalue()) / 1024
-                        
-                        if current_size > closest_match[3]:
+                        if needs_compression:
                             final_bytes = compress_image(resized_image, closest_match[3])
+                            suffix = "resized_compressed"
                         else:
                             final_bytes = resize_image(image, closest_match[1], closest_match[2])
+                            suffix = "resized"
                         
                         output_format = 'JPEG' if image.format in ['JPEG', 'JPG'] else 'PNG'
                         st.download_button(
-                            label="Download resized and compressed image",
+                            label=f"Download {suffix} image",
                             data=final_bytes,
-                            file_name=f"{original_name}_resized_compressed.{output_format.lower()}",
+                            file_name=f"{original_name}_{suffix}.{output_format.lower()}",
                             mime=f"image/{output_format.lower()}"
                         )
         
