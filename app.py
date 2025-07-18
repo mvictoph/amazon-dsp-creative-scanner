@@ -27,10 +27,16 @@ def check_image_specs(image, desired_format):
     
     # Vérification du poids avec le format désiré
     img_byte_arr = io.BytesIO()
+    
+    # Conserver le mode original de l'image
+    if image.mode != 'RGB':
+        image = image.convert('RGB')
+        
     if desired_format == 'JPEG':
-        image.save(img_byte_arr, format='JPEG', quality=100)
+        image.save(img_byte_arr, format='JPEG', quality=100, optimize=True)
     else:
-        image.save(img_byte_arr, format='PNG')
+        image.save(img_byte_arr, format='PNG', optimize=True)
+e)
     
     size_kb = len(img_byte_arr.getvalue()) / 1024
     
@@ -44,10 +50,13 @@ def resize_image(image, target_width, target_height, desired_format):
     resized = image.resize((target_width, target_height), Image.LANCZOS)
     img_byte_arr = io.BytesIO()
     
+    if image.mode != 'RGB':
+        image = image.convert('RGB')
+    
     if desired_format == 'JPEG':
-        resized.save(img_byte_arr, format='JPEG', quality=95)
+        resized.save(img_byte_arr, format='JPEG', quality=95, optimize=True)
     else:
-        resized.save(img_byte_arr, format='PNG')
+        resized.save(img_byte_arr, format='PNG', optimize=True)
         
     img_byte_arr.seek(0)
     return img_byte_arr
@@ -57,11 +66,14 @@ def compress_image(image, max_size_kb, desired_format):
     quality = 95
     img_byte_arr = io.BytesIO()
     
+    if image.mode != 'RGB':
+        image = image.convert('RGB')
+    
     if desired_format == 'JPEG':
         while quality > 5:
             img_byte_arr.seek(0)
             img_byte_arr.truncate()
-            image.save(img_byte_arr, format='JPEG', quality=quality)
+            image.save(img_byte_arr, format='JPEG', quality=quality, optimize=True)
             if len(img_byte_arr.getvalue()) / 1024 <= max_size_kb:
                 break
             quality -= 5
