@@ -5,29 +5,44 @@ import os
 from pathlib import Path
 import numpy as np
 
-# Définition des specs Amazon DSP
-AMAZON_DSP_SPECS =  = {
-    # Desktop
+# ===========================================
+# Configuration - Amazon DSP Specifications
+# ===========================================
+
+AMAZON_DSP_SPECS = {
+    # Desktop Formats
     "Desktop Medium Rectangle": (300, 250, 40),  # (width, height, max_size_kb)
     "Desktop Leaderboard": (728, 90, 40),
     "Desktop Wide Skyscraper": (160, 600, 40),
     "Desktop Large Rectangle": (300, 600, 50),
     "Desktop Billboard": (1940, 500, 200),
-    # Mobile
+    
+    # Mobile Formats
     "Mobile Leaderboard": (640, 100, 50),
-    "Mobile Detail Banner": (828, 250, 100),  # Detail and Search Results page
+    "Mobile Detail Banner": (828, 250, 100),
     "Mobile Medium Rectangle": (600, 500, 40),
     "Mobile Leaderboard Tablet": (1456, 180, 200)
 }
 
+# ===========================================
+# Image Processing Functions
+# ===========================================
+
 def check_image_specs(image, file):
-    """Vérifie les specs d'une image"""
+    """
+    Vérifie si l'image correspond aux spécifications Amazon DSP
+    Args:
+        image: Image PIL
+        file: Fichier uploadé
+    Returns:
+        tuple: (format_name, size_kb, max_size) ou (None, size_kb, None) si non conforme
+    """
     width, height = image.size
     
     # Obtenir la taille directe du fichier uploadé
     file.seek(0, os.SEEK_END)
     size_kb = file.tell() / 1024
-    file.seek(0)  # Remettre le curseur au début du fichier
+    file.seek(0)
     
     for format_name, (req_width, req_height, max_size) in AMAZON_DSP_SPECS.items():
         if (width == req_width and height == req_height):
@@ -35,7 +50,16 @@ def check_image_specs(image, file):
     return None, size_kb, None
 
 def resize_image(image, target_width, target_height, max_size_kb):
-    """Redimensionne l'image en préservant la qualité tout en respectant la limite de poids"""
+    """
+    Redimensionne l'image tout en respectant la limite de poids
+    Args:
+        image: Image PIL
+        target_width: Largeur cible
+        target_height: Hauteur cible
+        max_size_kb: Poids maximum autorisé
+    Returns:
+        tuple: (bytes de l'image, format de sortie)
+    """
     resized = image.resize((target_width, target_height), Image.LANCZOS)
     img_byte_arr = io.BytesIO()
     
@@ -45,7 +69,6 @@ def resize_image(image, target_width, target_height, max_size_kb):
     output_format = 'JPEG' if image.format in ['JPEG', 'JPG'] else 'PNG'
     
     if output_format == 'JPEG':
-        # Commencer avec la meilleure qualité et réduire si nécessaire
         quality = 95
         while quality > 5:
             img_byte_arr.seek(0)
@@ -57,10 +80,8 @@ def resize_image(image, target_width, target_height, max_size_kb):
                 break
             quality -= 5
     else:
-        # Pour PNG, utiliser la compression maximale
         resized.save(img_byte_arr, format='PNG', optimize=True, compression_level=9)
         
-        # Si toujours trop grand, convertir en JPEG
         if len(img_byte_arr.getvalue()) / 1024 > max_size_kb:
             img_byte_arr = io.BytesIO()
             resized = resized.convert('RGB')
@@ -78,7 +99,14 @@ def resize_image(image, target_width, target_height, max_size_kb):
     return img_byte_arr.getvalue(), output_format
 
 def compress_image(image, max_size_kb):
-    """Compresse l'image jusqu'à atteindre la taille maximale"""
+    """
+    Compresse l'image pour atteindre le poids maximum autorisé
+    Args:
+        image: Image PIL
+        max_size_kb: Poids maximum autorisé
+    Returns:
+        bytes: Image compressée
+    """
     img_byte_arr = io.BytesIO()
     
     if image.mode != 'RGB':
@@ -98,11 +126,9 @@ def compress_image(image, max_size_kb):
                 break
             quality -= 5
     else:
-        # Pour PNG, essayer différentes méthodes de compression
         min_size = float('inf')
         best_bytes = None
         
-        # Essayer différents niveaux de compression
         for compression in range(9, -1, -1):
             temp_buffer = io.BytesIO()
             image.save(temp_buffer, format='PNG', optimize=True, compression_level=compression)
@@ -115,7 +141,6 @@ def compress_image(image, max_size_kb):
             if current_size <= max_size_kb:
                 break
         
-        # Si aucune compression PNG n'est suffisante, convertir en JPEG
         if best_bytes is None:
             quality = 95
             while quality > 5:
@@ -124,7 +149,7 @@ def compress_image(image, max_size_kb):
                 image.save(img_byte_arr, format='JPEG', quality=quality, optimize=True)
                 if len(img_byte_arr.getvalue()) / 1024 <= max_size_kb:
                     best_bytes = img_byte_arr.getvalue()
-                    output_format = 'JPEG'  # Changement de format si nécessaire
+                    output_format = 'JPEG'
                     break
                 quality -= 5
         
@@ -132,7 +157,12 @@ def compress_image(image, max_size_kb):
     
     return final_bytes if final_bytes is not None else img_byte_arr.getvalue()
 
+# ===========================================
+# Interface Streamlit
+# ===========================================
+
 def main():
+    """Fonction principale de l'interface utilisateur"""
     st.title("Amazon DSP Creative Scanner")
     
     st.write("Please upload JPG/JPEG or PNG files")
@@ -145,17 +175,20 @@ def main():
         found_formats = set()
         issues = []
         
+        # Traitement de chaque fichier uploadé
         for file in uploaded_files:
             image = Image.open(file)
             format_name, size_kb, max_size = check_image_specs(image, file)
             original_name = os.path.splitext(file.name)[0]
             
             if format_name:
+                # Format correct trouvé
                 found_formats.add(format_name)
                 dimensions = AMAZON_DSP_SPECS[format_name][:2]
                 
                 st.write(f"✅ {original_name} matches {format_name} ({dimensions[0]}x{dimensions[1]}) - Size: {size_kb:.1f}KB")
                 
+                # Vérification du poids
                 if size_kb > max_size:
                     st.warning(f"⚠️ File size ({size_kb:.1f}KB) exceeds {max_size}KB limit")
                     if st.button(f"Compress {original_name}"):
@@ -167,11 +200,12 @@ def main():
                             mime=f"image/{image.format.lower()}"
                         )
             else:
-                # Vérifier la taille actuelle de l'image pour le message
+                # Format non conforme
                 img_byte_arr = io.BytesIO()
                 image.save(img_byte_arr, format=image.format)
                 current_size = len(img_byte_arr.getvalue()) / 1024
                 
+                # Recherche du format le plus proche
                 closest_match = None
                 min_diff = float('inf')
                 
@@ -183,9 +217,9 @@ def main():
                         closest_match = (spec_name, req_w, req_h, max_w)
                 
                 if closest_match:
-                    # Déterminer si l'image dépasse également le poids maximum
                     needs_compression = current_size > closest_match[3]
                     
+                    # Message d'erreur approprié
                     if needs_compression:
                         st.error(f"❌ {original_name} doesn't match any dimension and exceeds maximum file weight")
                     else:
@@ -193,10 +227,10 @@ def main():
                     
                     st.write(f"Closest format: {closest_match[0]} ({closest_match[1]}x{closest_match[2]}) - Max size: {closest_match[3]}KB")
                     
+                    # Bouton approprié selon les besoins
                     button_text = f"Resize and compress {original_name}" if needs_compression else f"Resize {original_name}"
                     
                     if st.button(button_text):
-                        # Redimensionnement d'abord
                         resized_image = image.resize((closest_match[1], closest_match[2]), Image.LANCZOS)
                         
                         if needs_compression:
@@ -214,7 +248,7 @@ def main():
                             mime=f"image/{output_format.lower()}"
                         )
         
-        # Vérification des formats manquants
+        # Affichage des formats manquants
         missing_formats = set(AMAZON_DSP_SPECS.keys()) - found_formats
         if missing_formats:
             st.write("\n### Missing Creatives")
@@ -223,7 +257,7 @@ def main():
                 w, h, _ = AMAZON_DSP_SPECS[format_name]
                 st.write(f"- {format_name} ({w}x{h})")
             
-            # Génération du message client
+            # Message pour l'advertiser
             client_message = """Dear Advertiser,
 
 Some creative dimensions are missing for your Amazon DSP campaign. Please provide the following dimensions:
