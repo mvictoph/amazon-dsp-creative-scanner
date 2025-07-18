@@ -121,7 +121,7 @@ def compress_image(image, max_size_kb):
             while quality > 5:
                 img_byte_arr.seek(0)
                 img_byte_arr.truncate()
-                image.save(img_byte_arr, format='JPEG', quality=quality, optimize=True)
+                image.save(img_byte_arr, format='JPEG', quality=quality,ty, optimize=True)
                 if len(img_byte_arr.getvalue()) / 1024 <= max_size_kb:
                     best_bytes = img_byte_arr.getvalue()
                     output_format = 'JPEG'  # Changement de format si nécessaire
@@ -167,7 +167,11 @@ def main():
                             mime=f"image/{image.format.lower()}"
                         )
             else:
-                st.error(f"❌ {original_name} doesn't match any dimension")
+                # Vérifier la taille actuelle de l'image pour le message
+                img_byte_arr = io.BytesIO()
+                image.save(img_byte_arr, format=image.format)
+                current_size = len(img_byte_arr.getvalue()) / 1024
+                
                 closest_match = None
                 min_diff = float('inf')
                 
@@ -179,15 +183,15 @@ def main():
                         closest_match = (spec_name, req_w, req_h, max_w)
                 
                 if closest_match:
-                    st.write(f"Closest format: {closest_match[0]} ({closest_match[1]}x{closest_match[2]}) - Max size: {closest_match[3]}KB")
-                    
-                    # Vérifier d'abord la taille actuelle de l'image
-                    img_byte_arr = io.BytesIO()
-                    image.save(img_byte_arr, format=image.format)
-                    current_size = len(img_byte_arr.getvalue()) / 1024
-                    
-                    # Déterminer si seul le redimensionnement est nécessaire
+                    # Déterminer si l'image dépasse également le poids maximum
                     needs_compression = current_size > closest_match[3]
+                    
+                    if needs_compression:
+                        st.error(f"❌ {original_name} doesn't match any dimension and exceeds maximum file weight")
+                    else:
+                        st.error(f"❌ {original_name} doesn't match any dimension")
+                    
+                    st.write(f"Closest format: {closest_match[0]} ({closest_match[1]}x{closest_match[2]}) - Max size: {closest_match[3]}KB")
                     
                     button_text = f"Resize and compress {original_name}" if needs_compression else f"Resize {original_name}"
                     
