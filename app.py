@@ -34,7 +34,7 @@ def check_image_specs(image, file):
             return format_name, size_kb, max_size
     return None, size_kb, None
 
-def resize_image(image, target_width, target_height, desired_format):
+def resize_image(image, target_width, target_height):
     """Redimensionne l'image aux dimensions cibles"""
     resized = image.resize((target_width, target_height), Image.LANCZOS)
     img_byte_arr = io.BytesIO()
@@ -42,15 +42,11 @@ def resize_image(image, target_width, target_height, desired_format):
     if image.mode != 'RGB':
         image = image.convert('RGB')
     
-    if desired_format == 'JPEG':
-        resized.save(img_byte_arr, format='JPEG', quality=95, optimize=True)
-    else:
-        resized.save(img_byte_arr, format='PNG', optimize=True)
-        
+    resized.save(img_byte_arr, format=image.format, quality=95, optimize=True)
     img_byte_arr.seek(0)
     return img_byte_arr
 
-def compress_image(image, max_size_kb, desired_format):
+def compress_image(image, max_size_kb):
     """Compresse l'image jusqu'à atteindre la taille maximale"""
     quality = 95
     img_byte_arr = io.BytesIO()
@@ -58,17 +54,13 @@ def compress_image(image, max_size_kb, desired_format):
     if image.mode != 'RGB':
         image = image.convert('RGB')
     
-    if desired_format == 'JPEG':
-        while quality > 5:
-            img_byte_arr.seek(0)
-            img_byte_arr.truncate()
-            image.save(img_byte_arr, format='JPEG', quality=quality, optimize=True)
-            if len(img_byte_arr.getvalue()) / 1024 <= max_size_kb:
-                break
-            quality -= 5
-    else:
-        # Pour PNG, on utilise une compression maximale
-        image.save(img_byte_arr, format='PNG', optimize=True)
+    while quality > 5:
+        img_byte_arr.seek(0)
+        img_byte_arr.truncate()
+        image.save(img_byte_arr, format=image.format, quality=quality, optimize=True)
+        if len(img_byte_arr.getvalue()) / 1024 <= max_size_kb:
+            break
+        quality -= 5
     
     img_byte_arr.seek(0)
     return img_byte_arr
@@ -76,22 +68,11 @@ def compress_image(image, max_size_kb, desired_format):
 def main():
     st.title("Amazon DSP Creative Scanner")
     
-    # Sélecteur de format
-    desired_format = st.selectbox(
-        "Select desired format for creatives:",
-        ["JPEG", "PNG"],
-        index=0
-    )
+    st.write("Please upload JPG/JPEG or PNG files")
     
-    # Adaptation du type de fichiers acceptés en fonction du format choisi
-    accepted_types = ['jpg', 'jpeg'] if desired_format == 'JPEG' else ['png']
-    file_format_display = "JPG/JPEG" if desired_format == 'JPEG' else "PNG"
-    
-    st.write(f"Please upload {file_format_display} files only")
-    
-    uploaded_files = st.file_uploader(f"Upload your {file_format_display} creative files", 
+    uploaded_files = st.file_uploader("Upload your creative files", 
                                     accept_multiple_files=True,
-                                    type=accepted_types)
+                                    type=['jpg', 'jpeg', 'png'])
     
     if uploaded_files:
         found_formats = set()
@@ -111,12 +92,12 @@ def main():
                 if size_kb > max_size:
                     st.warning(f"⚠️ File size ({size_kb:.1f}KB) exceeds {max_size}KB limit")
                     if st.button(f"Compress {original_name}"):
-                        compressed_bytes = compress_image(image, max_size, desired_format)
+                        compressed_bytes = compress_image(image, max_size)
                         st.download_button(
                             label="Download compressed image",
                             data=compressed_bytes,
-                            file_name=f"{original_name}.{desired_format.lower()}",
-                            mime=f"image/{desired_format.lower()}"
+                            file_name=f"{original_name}_compressed.{image.format.lower()}",
+                            mime=f"image/{image.format.lower()}"
                         )
             else:
                 st.error(f"❌ {original_name} doesn't match any format")
@@ -133,12 +114,12 @@ def main():
                 if closest_match:
                     st.write(f"Closest format: {closest_match[0]} ({closest_match[1]}x{closest_match[2]})")
                     if st.button(f"Resize {original_name}"):
-                        resized_bytes = resize_image(image, closest_match[1], closest_match[2], desired_format)
+                        resized_bytes = resize_image(image, closest_match[1], closest_match[2])
                         st.download_button(
                             label="Download resized image",
                             data=resized_bytes,
-                            file_name=f"{original_name}.{desired_format.lower()}",
-                            mime=f"image/{desired_format.lower()}"
+                            file_name=f"{original_name}_resized.{image.format.lower()}",
+                            mime=f"image/{image.format.lower()}"
                         )
         
         # Vérification des formats manquants
