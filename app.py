@@ -20,14 +20,14 @@ AMAZON_DSP_SPECS = {
     "Mobile Leaderboard Tablet": (1456, 180, 200)
 }
 
-def check_image_specs(image, desired_format):
+def check_image_specs(image, file):
     """Vérifie les specs d'une image"""
     width, height = image.size
     
-    # Obtenir la taille du fichier original
-    original_buffer = io.BytesIO()
-    image.save(original_buffer, format=image.format if image.format else 'JPEG')
-    size_kb = len(original_buffer.getvalue()) / 1024
+    # Obtenir la taille directe du fichier uploadé
+    file.seek(0, os.SEEK_END)
+    size_kb = file.tell() / 1024
+    file.seek(0)  # Remettre le curseur au début du fichier
     
     for format_name, (req_width, req_height, max_size) in AMAZON_DSP_SPECS.items():
         if (width == req_width and height == req_height):
@@ -99,7 +99,7 @@ def main():
         
         for file in uploaded_files:
             image = Image.open(file)
-            format_name, size_kb, max_size = check_image_specs(image, desired_format)
+            format_name, size_kb, max_size = check_image_specs(image, file)
             original_name = os.path.splitext(file.name)[0]
             
             if format_name:
