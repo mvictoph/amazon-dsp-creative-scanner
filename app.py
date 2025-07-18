@@ -53,9 +53,8 @@ def resize_image(image, target_width, target_height):
     img_byte_arr.seek(0)
     return img_byte_arr.getvalue()
 
-def compress_image(image, max_size_kb):
+def compress_image(image, max_sizeize_kb):
     """Compresse l'image jusqu'à atteindre la taille maximale"""
-    quality = 95
     img_byte_arr = io.BytesIO()
     
     if image.mode != 'RGB':
@@ -64,6 +63,7 @@ def compress_image(image, max_size_kb):
     output_format = 'JPEG' if image.format in ['JPEG', 'JPG'] else 'PNG'
     
     if output_format == 'JPEG':
+        quality = 95
         while quality > 5:
             img_byte_arr.seek(0)
             img_byte_arr.truncate()
@@ -72,7 +72,37 @@ def compress_image(image, max_size_kb):
                 break
             quality -= 5
     else:
-        image.save(img_byte_arr, format='PNG', optimize=True)
+        # Pour PNG, essayer différentes méthodes de compression
+        min_size = float('inf')
+        best_bytes = None
+        
+        # Essayer différents niveaux de compression
+        for compression in range(9, -1, -1):
+            temp_buffer = io.BytesIO()
+            image.save(temp_buffer, format='PNG', optimize=True, compression_level=compression)
+            size = len(temp_buffer.getvalue()) / 1024
+            
+            if size <= max_size_kb and size < min_size:
+                min_size = size
+                best_bytes = temp_buffer.getvalue()
+            
+            if size <= max_size_kb:
+                break
+        
+        # Si aucune compression PNG n'est suffisante, convertir en JPEG
+        if best_bytes is None:
+            quality = 95
+            while quality > 5:
+                img_byte_arr.seek(0)
+                img_byte_arr.truncate()
+                image.save(img_byte_arr, format='JPEG', quality=quality, optimize=True)
+                if len(img_byte_arr.getvalue()) / 1024 <= max_size_kb:
+                    break
+                quality -= 5
+            best_bytes = img_byte_arr.getvalue()
+            output_format = 'JPEG'  # Changement de format si nécessaire
+        
+        img_byteyte_arr = io.BytesIO(best_bytes)
     
     img_byte_arr.seek(0)
     return img_byte_arr.getvalue()
