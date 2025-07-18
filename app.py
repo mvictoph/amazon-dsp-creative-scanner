@@ -53,7 +53,7 @@ def resize_image(image, target_width, target_height):
     img_byte_arr.seek(0)
     return img_byte_arr.getvalue()
 
-def compress_image(image, max_sizeize_kb):
+def compress_image(image, max_size_kb):
     """Compresse l'image jusqu'à atteindre la taille maximale"""
     img_byte_arr = io.BytesIO()
     
@@ -61,6 +61,7 @@ def compress_image(image, max_sizeize_kb):
         image = image.convert('RGB')
     
     output_format = 'JPEG' if image.format in ['JPEG', 'JPG'] else 'PNG'
+    final_bytes = None
     
     if output_format == 'JPEG':
         quality = 95
@@ -69,6 +70,7 @@ def compress_image(image, max_sizeize_kb):
             img_byte_arr.truncate()
             image.save(img_byte_arr, format='JPEG', quality=quality, optimize=True)
             if len(img_byte_arr.getvalue()) / 1024 <= max_size_kb:
+                final_bytes = img_byte_arr.getvalue()
                 break
             quality -= 5
     else:
@@ -80,13 +82,13 @@ def compress_image(image, max_sizeize_kb):
         for compression in range(9, -1, -1):
             temp_buffer = io.BytesIO()
             image.save(temp_buffer, format='PNG', optimize=True, compression_level=compression)
-            size = len(temp_buffer.getvalue()) / 1024
+            current_size = len(temp_buffer.getvalue()) / 1024
             
-            if size <= max_size_kb and size < min_size:
-                min_size = size
+            if current_size <= max_size_kb and current_size < min_size:
+                min_size = current_size
                 best_bytes = temp_buffer.getvalue()
             
-            if size <= max_size_kb:
+            if current_size <= max_size_kb:
                 break
         
         # Si aucune compression PNG n'est suffisante, convertir en JPEG
@@ -97,15 +99,14 @@ def compress_image(image, max_sizeize_kb):
                 img_byte_arr.truncate()
                 image.save(img_byte_arr, format='JPEG', quality=quality, optimize=True)
                 if len(img_byte_arr.getvalue()) / 1024 <= max_size_kb:
+                    best_bytes = img_byte_arr.getvalue()
+                    output_format = 'JPEG'  # Changement de format si nécessaire
                     break
                 quality -= 5
-            best_bytes = img_byte_arr.getvalue()
-            output_format = 'JPEG'  # Changement de format si nécessaire
         
-        img_byteyte_arr = io.BytesIO(best_bytes)
+        final_bytes = best_bytes
     
-    img_byte_arr.seek(0)
-    return img_byte_arr.getvalue()
+    return final_bytes if final_bytes is not None else img_byte_arr.getvalue()
 
 def main():
     st.title("Amazon DSP Creative Scanner")
