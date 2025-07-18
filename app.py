@@ -125,7 +125,7 @@ def main():
                 
                 if closest_match:
                     st.write(f"Closest format: {closest_match[0]} ({closest_match[1]}x{closest_match[2]}) - Max size: {closest_match[3]}KB")
-                    if st.button(f"Resize and optimize {original_name}"):
+                    if st.button(f"Resize and compress {original_name}"):
                         # Redimensionnement
                         resized_image = image.resize((closest_match[1], closest_match[2]), Image.LANCZOS)
                         
@@ -141,9 +141,9 @@ def main():
                         
                         output_format = 'JPEG' if image.format in ['JPEG', 'JPG'] else 'PNG'
                         st.download_button(
-                            label="Download resized and optimized image",
+                            label="Download resized and compressed image",
                             data=final_bytes,
-                            file_name=f"{original_name}_resized_optimized.{output_format.lower()}",
+                            file_name=f"{original_name}_resized_compressed.{output_format.lower()}",
                             mime=f"image/{output_format.lower()}"
                         )
         
