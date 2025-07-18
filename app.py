@@ -15,7 +15,7 @@ AMAZON_DSP_SPECS = {
     "Desktop Billboard": (1940, 500, 200),
     # Mobile
     "Mobile Leaderboard": (640, 100, 50),
-    "Mobile Detail Banner": (828, 250, 100),  # Detail and Se Search Results page
+    "Mobile Detail Banner": (828, 250, 100),  # Detail and Search Results page
     "Mobile Medium Rectangle": (600, 500, 40),
     "Mobile Leaderboard Tablet": (1456, 180, 200)
 }
@@ -78,7 +78,7 @@ def resize_image(image, target_width, target_height, max_size_kb):
     return img_byte_arr.getvalue(), output_format
 
 def compress_image(image, max_size_kb):
-    """Compresse l'image jusqu'à atteiteindre la taille maximale"""
+    """Compresse l'image jusqu'à atteindre la taille maximale"""
     img_byte_arr = io.BytesIO()
     
     if image.mode != 'RGB':
@@ -192,7 +192,9 @@ def main():
                     button_text = f"Resize and compress {original_name}" if needs_compression else f"Resize {original_name}"
                     
                     if st.button(button_text):
-                        # Redimensionnement
+                        # Redimensionnement d'abord
+                        resized_image = image.resize((closest_match[1], closest_match[2]), Image.LANCZOS)
+                        
                         if needs_compression:
                             final_bytes = compress_image(resized_image, closest_match[3])
                             suffix = "resized_compressed"
