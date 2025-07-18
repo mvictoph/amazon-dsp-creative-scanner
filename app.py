@@ -51,7 +51,7 @@ def resize_image(image, target_width, target_height):
         resized.save(img_byte_arr, format='PNG', optimize=True)
         
     img_byte_arr.seek(0)
-    return img_byte_arr
+    return img_byte_arr.getvalue()
 
 def compress_image(image, max_size_kb):
     """Compresse l'image jusqu'à atteindre la taille maximale"""
@@ -75,7 +75,7 @@ def compress_image(image, max_size_kb):
         image.save(img_byte_arr, format='PNG', optimize=True)
     
     img_byte_arr.seek(0)
-    return img_byte_arr
+    return img_byte_arr.getvalue()
 
 def main():
     st.title("Amazon DSP Creative Scanner")
@@ -112,26 +112,38 @@ def main():
                             mime=f"image/{image.format.lower()}"
                         )
             else:
-                st.error(f"❌ {original_name} doesn't match any format")
+                st.error(f"❌ {original_name} doesn't match any dimension")
                 closest_match = None
                 min_diff = float('inf')
                 
-                for spec_name, (req_w, req_h, _) in AMAZON_DSP_SPECS.items():
+                for spec_name, (req_w, req_h, max_w) in AMAZON_DSP_SPECS.items():
                     w_diff = abs(image.size[0] - req_w)
                     h_diff = abs(image.size[1] - req_h)
                     if w_diff + h_diff < min_diff:
                         min_diff = w_diff + h_diff
-                        closest_match = (spec_name, req_w, req_h)
+                        closest_match = (spec_name, req_w, req_h, max_w)
                 
                 if closest_match:
-                    st.write(f"Closest format: {closest_match[0]} ({closest_match[1]}x{closest_match[2]})")
-                    if st.button(f"Resize {original_name}"):
-                        resized_bytes = resize_image(image, closest_match[1], closest_match[2])
+                    st.write(f"Closest format: {closest_match[0]} ({closest_match[1]}x{closest_match[2]}) - Max size: {closest_match[3]}KB")
+                    if st.button(f"Resize and optimize {original_name}"):
+                        # Redimensionnement
+                        resized_image = image.resize((closest_match[1], closest_match[2]), Image.LANCZOS)
+                        
+                        # Compression si nécessaire
+                        img_byte_arr = io.BytesIO()
+                        resized_image.save(img_byte_arr, format=image.format, quality=95, optimize=True)
+                        current_size = len(img_byte_arr.getvalue()) / 1024
+                        
+                        if current_size > closest_match[3]:
+                            final_bytes = compress_image(resized_image, closest_match[3])
+                        else:
+                            final_bytes = resize_image(image, closest_match[1], closest_match[2])
+                        
                         output_format = 'JPEG' if image.format in ['JPEG', 'JPG'] else 'PNG'
                         st.download_button(
-                            label="Download resized image",
-                            data=resized_bytes,
-                            file_name=f"{original_name}_resized.{output_format.lower()}",
+                            label="Download resized and optimized image",
+                            data=final_bytes,
+                            file_name=f"{original_name}_resized_optimized.{output_format.lower()}",
                             mime=f"image/{output_format.lower()}"
                         )
         
