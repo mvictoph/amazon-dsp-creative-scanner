@@ -30,7 +30,7 @@ def check_image_specs(image, desired_format):
     if desired_format == 'JPEG':
         image.save(img_byte_arr, format='JPEG', quality=100)
     else:
-        image.save(img_byte_arr, format='PNG')
+        image.save(img_byte_arr, format='PNG'NG')
     
     size_kb = len(img_byte_arr.getvalue()) / 1024
     
@@ -82,10 +82,10 @@ def main():
         index=0
     )
     
-    # Champ pour le nom de base des fichiers
+    # Champ pour le nom de base des fichiers (optionnel)
     base_filename = st.text_input(
-        "Enter base name for files (e.g., 'Static V1')",
-        value="Static V1"
+        "Choose creative ID (optional, e.g. 'Static V1')",
+        value=""
     )
     
     # Adaptation du type de fichiers acceptés en fonction du format choisi
@@ -109,7 +109,14 @@ def main():
             if format_name:
                 found_formats.add(format_name)
                 dimensions = AMAZON_DSP_SPECS[format_name][:2]
-                new_filename = f"{base_filename} {dimensions[0]}x{dimensions[1]}"
+                
+                # Gestion du nom de fichier avec ou sans préfixe
+                if base_filename.strip():  # Si un nom de base est fourni
+                    new_filename = f"{base_filename} {dimensions[0]}x{dimensions[1]}"
+                else:  # Si aucun nom de base n'est fourni
+                    original_name = os.path.splitext(file.name)[0]  # Récupère le nom sans extension
+                    new_filename = f"{original_name}"  # Garde le nom original
+                
                 st.write(f"✅ {new_filename} matches {format_name} ({dimensions[0]}x{dimensions[1]}) - Size: {size_kb:.1f}KB")
                 
                 if size_kb > max_size:
@@ -123,7 +130,8 @@ def main():
                             mime=f"image/{desired_format.lower()}"
                         )
             else:
-                st.error(f"❌ {file.name} doesn't match any format")
+                original_name = os.path.splitext(file.name)[0]
+                st.error(f"❌ {original_name} doesn't match any format")
                 closest_match = None
                 min_diff = float('inf')
                 
@@ -135,7 +143,12 @@ def main():
                         closest_match = (spec_name, req_w, req_h)
                 
                 if closest_match:
-                    new_filename = f"{base_filename} {closest_match[1]}x{closest_match[2]}"
+                    # Gestion du nom de fichier avec ou sans préfixe pour le redimensionnement
+                    if base_filename.strip():
+                        new_filename = f"{base_filename} {closest_match[1]}x{closest_match[2]}"
+                    else:
+                        new_filename = f"{original_name}"
+                        
                     st.write(f"Closest format: {closest_match[0]} ({closest_match[1]}x{closest_match[2]})")
                     if st.button(f"Resize {new_filename}"):
                         resized_bytes = resize_image(image, closest_match[1], closest_match[2], desired_format)
