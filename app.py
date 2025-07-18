@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 
 # Définition des specs Amazon DSP
-AMAZON_DSP_SPECS = {
+AMAZON_DSP_SPECS =  = {
     # Desktop
     "Desktop Medium Rectangle": (300, 250, 40),  # (width, height, max_size_kb)
     "Desktop Leaderboard": (728, 90, 40),
@@ -121,7 +121,7 @@ def compress_image(image, max_size_kb):
             while quality > 5:
                 img_byte_arr.seek(0)
                 img_byte_arr.truncate()
-                image.save(img_byte_arr, format='JPEG', quality=quality,ty, optimize=True)
+                image.save(img_byte_arr, format='JPEG', quality=quality, optimize=True)
                 if len(img_byte_arr.getvalue()) / 1024 <= max_size_kb:
                     best_bytes = img_byte_arr.getvalue()
                     output_format = 'JPEG'  # Changement de format si nécessaire
