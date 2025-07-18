@@ -39,10 +39,17 @@ def resize_image(image, target_width, target_height):
     resized = image.resize((target_width, target_height), Image.LANCZOS)
     img_byte_arr = io.BytesIO()
     
-    if image.mode != 'RGB':
-        image = image.convert('RGB')
+    if resized.mode != 'RGB':
+        resized = resized.convert('RGB')
     
-    resized.save(img_byte_arr, format=image.format, quality=95, optimize=True)
+    # Déterminer le format de sortie
+    output_format = 'JPEG' if image.format in ['JPEG', 'JPG'] else 'PNG'
+    
+    if output_format == 'JPEG':
+        resized.save(img_byte_arr, format='JPEG', quality=95, optimize=True)
+    else:
+        resized.save(img_byte_arr, format='PNG', optimize=True)
+        
     img_byte_arr.seek(0)
     return img_byte_arr
 
@@ -54,13 +61,18 @@ def compress_image(image, max_size_kb):
     if image.mode != 'RGB':
         image = image.convert('RGB')
     
-    while quality > 5:
-        img_byte_arr.seek(0)
-        img_byte_arr.truncate()
-        image.save(img_byte_arr, format=image.format, quality=quality, optimize=True)
-        if len(img_byte_arr.getvalue()) / 1024 <= max_size_kb:
-            break
-        quality -= 5
+    output_format = 'JPEG' if image.format in ['JPEG', 'JPG'] else 'PNG'
+    
+    if output_format == 'JPEG':
+        while quality > 5:
+            img_byte_arr.seek(0)
+            img_byte_arr.truncate()
+            image.save(img_byte_arr, format='JPEG', quality=quality, optimize=True)
+            if len(img_byte_arr.getvalue()) / 1024 <= max_size_kb:
+                break
+            quality -= 5
+    else:
+        image.save(img_byte_arr, format='PNG', optimize=True)
     
     img_byte_arr.seek(0)
     return img_byte_arr
@@ -115,11 +127,12 @@ def main():
                     st.write(f"Closest format: {closest_match[0]} ({closest_match[1]}x{closest_match[2]})")
                     if st.button(f"Resize {original_name}"):
                         resized_bytes = resize_image(image, closest_match[1], closest_match[2])
+                        output_format = 'JPEG' if image.format in ['JPEG', 'JPG'] else 'PNG'
                         st.download_button(
                             label="Download resized image",
                             data=resized_bytes,
-                            file_name=f"{original_name}_resized.{image.format.lower()}",
-                            mime=f"image/{image.format.lower()}"
+                            file_name=f"{original_name}_resized.{output_format.lower()}",
+                            mime=f"image/{output_format.lower()}"
                         )
         
         # Vérification des formats manquants
