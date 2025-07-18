@@ -53,7 +53,7 @@ def compress_image(image, max_size_kb):
     return Image.open(img_byte_arr)
 
 def main():
-    st.title("Amazon DSP Creative Checker")
+    st.title("Amazon DSP Creative Scanner")
     
     uploaded_files = st.file_uploader("Upload your creative files", 
                                     accept_multiple_files=True,
