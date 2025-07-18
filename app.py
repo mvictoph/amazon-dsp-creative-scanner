@@ -150,8 +150,8 @@ def main():
         # Vérification des formats manquants
         missing_formats = set(AMAZON_DSP_SPECS.keys()) - found_formats
         if missing_formats:
-            st.write("\n### Missing Formats")
-            st.write("The following formats are missing:")
+            st.write("\n### Missing Creatives")
+            st.write("The following creative dimensions are missing:")
             for format_name in missing_formats:
                 w, h, _ = AMAZON_DSP_SPECS[format_name]
                 st.write(f"- {format_name} ({w}x{h})")
@@ -159,7 +159,7 @@ def main():
             # Génération du message client
             client_message = """Dear Advertiser,
 
-Some creative formats are missing for your Amazon DSP campaign. Please provide the following formats:
+Some creative dimensions are missing for your Amazon DSP campaign. Please provide the following dimensions:
 
 {}
 
