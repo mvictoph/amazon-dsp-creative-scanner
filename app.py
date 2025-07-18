@@ -30,7 +30,7 @@ def check_image_specs(image, desired_format):
     if desired_format == 'JPEG':
         image.save(img_byte_arr, format='JPEG', quality=100)
     else:
-        image.save(img_byte_arr, format='PNG'NG')
+        image.save(img_byte_arr, format='PNG')  # Correction ici
     
     size_kb = len(img_byte_arr.getvalue()) / 1024
     
@@ -132,7 +132,7 @@ def main():
             else:
                 original_name = os.path.splitext(file.name)[0]
                 st.error(f"❌ {original_name} doesn't match any format")
-                closest_match = None
+                closest_match ch = None
                 min_diff = float('inf')
                 
                 for spec_name, (req_w, req_h, _) in AMAZON_DSP_SPECS.items():
