@@ -15,7 +15,7 @@ AMAZON_DSP_SPECS = {
     "Desktop Billboard": (1940, 500, 200),
     # Mobile
     "Mobile Leaderboard": (640, 100, 50),
-    "Mobile Detail Banner": (828, 250, 100),  # Detail and Search Results page
+    "Mobile Detail Banner": (828, 250, 100),  # Detail and Se Search Results page
     "Mobile Medium Rectangle": (600, 500, 40),
     "Mobile Leaderboard Tablet": (1456, 180, 200)
 }
@@ -34,23 +34,18 @@ def check_image_specs(image, file):
             return format_name, size_kb, max_size
     return None, size_kb, None
 
-def resize_image(image, target_width, target_height):
-    """Redimensionne l'image en préservant la qualité"""
+def resize_image(image, target_width, target_height, max_size_kb):
+    """Redimensionne l'image en préservant la qualité tout en respectant la limite de poids"""
     resized = image.resize((target_width, target_height), Image.LANCZOS)
     img_byte_arr = io.BytesIO()
     
     if resized.mode != 'RGB':
         resized = resized.convert('RGB')
     
-    # Calculer le poids original
-    original_buffer = io.BytesIO()
-    image.save(original_buffer, format=image.format, quality=95, optimize=True)
-    original_size = len(original_buffer.getvalue()) / 1024
-    
     output_format = 'JPEG' if image.format in ['JPEG', 'JPG'] else 'PNG'
     
     if output_format == 'JPEG':
-        # Ajuster la qualité pour maintenir un poids similaire
+        # Commencer avec la meilleure qualité et réduire si nécessaire
         quality = 95
         while quality > 5:
             img_byte_arr.seek(0)
@@ -58,18 +53,32 @@ def resize_image(image, target_width, target_height):
             resized.save(img_byte_arr, format='JPEG', quality=quality, optimize=True)
             current_size = len(img_byte_arr.getvalue()) / 1024
             
-            if current_size <= original_size or quality <= 10:
+            if current_size <= max_size_kb:
                 break
             quality -= 5
     else:
-        # Pour PNG, utiliser la meilleure compression
+        # Pour PNG, utiliser la compression maximale
         resized.save(img_byte_arr, format='PNG', optimize=True, compression_level=9)
+        
+        # Si toujours trop grand, convertir en JPEG
+        if len(img_byte_arr.getvalue()) / 1024 > max_size_kb:
+            img_byte_arr = io.BytesIO()
+            resized = resized.convert('RGB')
+            quality = 95
+            while quality > 5:
+                img_byte_arr.seek(0)
+                img_byte_arr.truncate()
+                resized.save(img_byte_arr, format='JPEG', quality=quality, optimize=True)
+                if len(img_byte_arr.getvalue()) / 1024 <= max_size_kb:
+                    output_format = 'JPEG'
+                    break
+                quality -= 5
     
     img_byte_arr.seek(0)
-    return img_byte_arr.getvalue()
+    return img_byte_arr.getvalue(), output_format
 
 def compress_image(image, max_size_kb):
-    """Compresse l'image jusqu'à atteindre la taille maximale"""
+    """Compresse l'image jusqu'à atteiteindre la taille maximale"""
     img_byte_arr = io.BytesIO()
     
     if image.mode != 'RGB':
@@ -184,16 +193,14 @@ def main():
                     
                     if st.button(button_text):
                         # Redimensionnement
-                        resized_image = image.resize((closest_match[1], closest_match[2]), Image.LANCZOS)
-                        
                         if needs_compression:
                             final_bytes = compress_image(resized_image, closest_match[3])
                             suffix = "resized_compressed"
+                            output_format = 'JPEG' if image.format in ['JPEG', 'JPG'] else 'PNG'
                         else:
-                            final_bytes = resize_image(image, closest_match[1], closest_match[2])
+                            final_bytes, output_format = resize_image(image, closest_match[1], closest_match[2], closest_match[3])
                             suffix = "resized"
                         
-                        output_format = 'JPEG' if image.format in ['JPEG', 'JPG'] else 'PNG'
                         st.download_button(
                             label=f"Download {suffix} image",
                             data=final_bytes,
