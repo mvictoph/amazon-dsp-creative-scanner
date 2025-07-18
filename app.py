@@ -35,7 +35,11 @@ def check_image_specs(image):
 
 def resize_image(image, target_width, target_height):
     """Redimensionne l'image aux dimensions cibles"""
-    return image.resize((target_width, target_height), Image.LANCZOS)
+    resized = image.resize((target_width, target_height), Image.LANCZOS)
+    img_byte_arr = io.BytesIO()
+    resized.save(img_byte_arr, format='JPEG', quality=95)
+    img_byte_arr.seek(0)
+    return img_byte_arr
 
 def compress_image(image, max_size_kb):
     """Compresse l'image jusqu'à atteindre la taille maximale"""
@@ -45,12 +49,13 @@ def compress_image(image, max_size_kb):
     while quality > 5:
         img_byte_arr.seek(0)
         img_byte_arr.truncate()
-        image.save(img_byte_arr, format='PNG', quality=quality)
+        image.save(img_byte_arr, format='JPEG', quality=quality)
         if len(img_byte_arr.getvalue()) / 1024 <= max_size_kb:
             break
         quality -= 5
     
-    return Image.open(img_byte_arr)
+    img_byte_arr.seek(0)
+    return img_byte_arr
 
 def main():
     st.title("Amazon DSP Creative Scanner")
@@ -69,17 +74,18 @@ def main():
             
             if format_name:
                 found_formats.add(format_name)
-                st.write(f"✅ {file.name} matches {format_name}")
+                dimensions = AMAZON_DSP_SPECS[format_name][:2]
+                st.write(f"✅ {file.name} matches {format_name} ({dimensions[0]}x{dimensions[1]})")
                 
                 if size_kb > max_size:
                     st.warning(f"⚠️ File size ({size_kb:.1f}KB) exceeds {max_size}KB limit")
                     if st.button(f"Compress {file.name}"):
-                        compressed = compress_image(image, max_size)
+                        compressed_bytes = compress_image(image, max_size)
                         st.download_button(
                             label="Download compressed image",
-                            data=io.BytesIO().getvalue(),
+                            data=compressed_bytes,
                             file_name=f"compressed_{file.name}",
-                            mime="image/png"
+                            mime="image/jpeg"
                         )
             else:
                 st.error(f"❌ {file.name} doesn't match any format")
@@ -96,12 +102,12 @@ def main():
                 if closest_match:
                     st.write(f"Closest format: {closest_match[0]} ({closest_match[1]}x{closest_match[2]})")
                     if st.button(f"Resize {file.name}"):
-                        resized = resize_image(image, closest_match[1], closest_match[2])
+                        resized_bytes = resize_image(image, closest_match[1], closest_match[2])
                         st.download_button(
                             label="Download resized image",
-                            data=io.BytesIO().getvalue(),
+                            data=resized_bytes,
                             file_name=f"resized_{file.name}",
-                            mime="image/png"
+                            mime="image/jpeg"
                         )
         
         # Vérification des formats manquants
@@ -114,15 +120,13 @@ def main():
                 st.write(f"- {format_name} ({w}x{h})")
             
             # Génération du message client
-            client_message = """
-            Dear Client,
-            
-            Some creative formats are missing for your Amazon DSP campaign. Please provide the following formats:
-            
-            {}
-            
-            Best regards,
-            """.format("\n".join(f"- {format_name} ({AMAZON_DSP_SPECS[format_name][0]}x{AMAZON_DSP_SPECS[format_name][1]}px)" 
+            client_message = """Dear Advertiser,
+
+Some creative formats are missing for your Amazon DSP campaign. Please provide the following formats:
+
+{}
+
+Best regards,""".format("\n".join(f"- {format_name} ({AMAZON_DSP_SPECS[format_name][0]}x{AMAZON_DSP_SPECS[format_name][1]}px)" 
                                for format_name in missing_formats))
             
             st.text_area("Message for client", client_message, height=200)
