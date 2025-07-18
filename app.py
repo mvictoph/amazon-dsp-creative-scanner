@@ -4,7 +4,6 @@ import io
 import os
 from pathlib import Path
 import numpy as np
-from PIL import Image
 
 # Définition des specs Amazon DSP
 AMAZON_DSP_SPECS = {
@@ -18,7 +17,7 @@ AMAZON_DSP_SPECS = {
     "Mobile Leaderboard": (320, 50, 40),
     "Mobile Banner": (320, 480, 40),
     "Mobile Medium Rectangle": (300, 250, 40),
-    "Mobile Interstitial": (1940, 500, 40),
+    "Mobile Interstitial": (1940, 500, 40)
 }
 
 def check_image_specs(image, desired_format):
@@ -36,7 +35,6 @@ def check_image_specs(image, desired_format):
         image.save(img_byte_arr, format='JPEG', quality=100, optimize=True)
     else:
         image.save(img_byte_arr, format='PNG', optimize=True)
-e)
     
     size_kb = len(img_byte_arr.getvalue()) / 1024
     
