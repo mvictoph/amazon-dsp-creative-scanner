@@ -35,21 +35,36 @@ def check_image_specs(image, file):
     return None, size_kb, None
 
 def resize_image(image, target_width, target_height):
-    """Redimensionne l'image aux dimensions cibles"""
+    """Redimensionne l'image en préservant la qualité"""
     resized = image.resize((target_width, target_height), Image.LANCZOS)
     img_byte_arr = io.BytesIO()
     
     if resized.mode != 'RGB':
         resized = resized.convert('RGB')
     
-    # Déterminer le format de sortie
+    # Calculer le poids original
+    original_buffer = io.BytesIO()
+    image.save(original_buffer, format=image.format, quality=95, optimize=True)
+    original_size = len(original_buffer.getvalue()) / 1024
+    
     output_format = 'JPEG' if image.format in ['JPEG', 'JPG'] else 'PNG'
     
     if output_format == 'JPEG':
-        resized.save(img_byte_arr, format='JPEG', quality=95, optimize=True)
+        # Ajuster la qualité pour maintenir un poids similaire
+        quality = 95
+        while quality > 5:
+            img_byte_arr.seek(0)
+            img_byte_arr.truncate()
+            resized.save(img_byte_arr, format='JPEG', quality=quality, optimize=True)
+            current_size = len(img_byte_arr.getvalue()) / 1024
+            
+            if current_size <= original_size or quality <= 10:
+                break
+            quality -= 5
     else:
-        resized.save(img_byte_arr, format='PNG', optimize=True)
-        
+        # Pour PNG, utiliser la meilleure compression
+        resized.save(img_byte_arr, format='PNG', optimize=True, compression_level=9)
+    
     img_byte_arr.seek(0)
     return img_byte_arr.getvalue()
 
